@@ -249,6 +249,69 @@ openpyxl
 
 ---
 
+## Project 2 — Unsupervised Analysis & Key Findings
+
+### Motivation
+
+The Agatston score reduces complex 3D calcium morphology to a single number.
+Two patients with the same score can have fundamentally different calcium patterns —
+one with a single compact nodule, another with diffuse irregular deposits spread across
+multiple vessels. These differences may carry different clinical risk but are invisible
+to the score alone. Unsupervised clustering on radiomic features reveals these hidden phenotypes.
+
+### Method
+
+K-Means clustering (k=4, selected via silhouette score) was applied to the standardized
+radiomic feature vectors of 23 patients. UMAP was used for 2D visualization.
+Phenotypes were characterized by inspecting mean feature values per cluster.
+
+### Discovered Phenotypes
+
+| Cluster | Patients | Avg Agatston | Sphericity | Volume | Texture Complexity | Phenotype |
+|---------|----------|-------------|------------|--------|-------------------|-----------|
+| 1 | 7 | 67.8 | 0.599 | 59.2 | Low | Small & Compact — focal round nodules |
+| 2 | 5 | 3005.3 | 0.278 | 2574.2 | Very High | Large & Heterogeneous — dense complex plaques |
+| 3 | 1 | 0.0 | 0.370 | 399.5 | Low | Homogeneous — no significant calcium |
+| 4 | 10 | 681.1 | 0.354 | 621.5 | Medium | Mixed — moderate volume, irregular texture |
+
+### Key Insight — Cluster 4 vs Cluster 2
+
+Both Cluster 2 and Cluster 4 contain high Agatston score patients ("Severe"),
+yet their radiomic profiles are strikingly different:
+
+```
+Cluster 2 (avg score 3005): Sphericity=0.278, Volume=2574, Texture=59.15
+Cluster 4 (avg score 681):  Sphericity=0.354, Volume=621,  Texture=21.32
+```
+
+Cluster 2 patients have calcium that is far more irregular, larger and texturally complex.
+Under current clinical practice both groups would receive the same risk classification
+and treatment recommendation based on Agatston score alone.
+
+### Hypothesis
+
+Irregular, heterogeneous calcium deposits (Cluster 2) may represent a more vulnerable
+plaque phenotype — more prone to rupture — compared to compact, homogeneous deposits
+(Cluster 4) with similar scores. Radiomic features capture this morphological distinction
+that the Agatston score cannot.
+
+This supports the case for **radiomic phenotyping as a complement to Agatston scoring**
+in cardiac risk stratification — which is precisely the goal of the PrediCT Project 2.
+
+### Unsupervised Analysis Outputs
+
+| File | Description |
+|------|-------------|
+| `cluster_selection.png` | Elbow + silhouette plots justifying k=4 |
+| `umap.png` | UMAP coloured by cluster vs Agatston category side by side |
+| `phenotype_profiles.png` | Z-score heatmap of feature profiles per cluster |
+| `cluster_agatston_distribution.png` | Agatston category distribution within each cluster |
+| `cluster_assignments.csv` | Patient-level cluster assignments |
+
+---
+
+---
+
 ## Author
 
 **HoangLongCan**
