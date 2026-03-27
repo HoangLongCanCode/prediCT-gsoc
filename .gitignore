@@ -3,3 +3,7 @@ processed/
 cocacoronarycalciumandchestcts-2/ 
 __pycache__/ 
 *.pyc 
+.venv/ 
+COCA_scripts_(2)/ 
+results/ 
+*.docx 
