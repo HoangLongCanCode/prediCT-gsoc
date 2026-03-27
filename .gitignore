@@ -1,0 +1,5 @@
+venv/ 
+processed/ 
+cocacoronarycalciumandchestcts-2/ 
+__pycache__/ 
+*.pyc 
