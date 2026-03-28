@@ -10,7 +10,7 @@ and a radiomics feature extraction + statistical analysis pipeline for Project 2
 
 ```
 prediCT-gsoc/
-├── common_task/              # COCA preprocessing pipeline (required for all projects)
+├── common_task/              # Common Task: COCA Dataset Preprocessing
 │   ├── COCA_pipeline.py      # Main runner — orchestrates all steps
 │   ├── COCA_processor.py     # DICOM → NIfTI image + segmentation mask
 │   ├── COCA_resampler.py     # Resamples to target voxel spacing
@@ -20,9 +20,10 @@ prediCT-gsoc/
 │   ├── dataset_statistics.py # Generates dataset statistics report
 │   └── justification.md      # Written justification + dataset statistics
 │
-├── project2_radiomics/       # Project 2: Radiomics & Phenotyping
-│   ├── extract_features.py   # PyRadiomics feature extraction + Agatston scores
-│   ├── statistical_analysis.py # Spearman, Kruskal-Wallis, visualizations
+├── project2_radiomics/       # Specific Task: Project 2 (Radiomics & Phenotyping) - Feature Extraction
+│   ├── extract_features.py       # PyRadiomics feature extraction + Agatston scores
+│   ├── statistical_analysis.py   # Spearman, Kruskal-Wallis, visualizations
+│   ├── unsupervised_analysis.py  # K-Means clustering, UMAP, phenotype characterization
 │   └── results/
 │       ├── features.csv           # Extracted features for 23 patients
 │       ├── spearman_results.csv   # Spearman correlation results
@@ -30,7 +31,12 @@ prediCT-gsoc/
 │       ├── correlation_matrix.png
 │       ├── significant_features.png
 │       ├── agatston_distribution.png
-│       └── tsne.png
+│       ├── tsne.png
+│       ├── umap.png
+│       ├── cluster_selection.png
+│       ├── phenotype_profiles.png
+│       ├── cluster_agatston_distribution.png
+│       └── cluster_assignments.csv
 │
 └── README.md
 ```
@@ -48,7 +54,7 @@ prediCT-gsoc/
 
 ---
 
-## Common Task — COCA Preprocessing Pipeline
+## Common Task: COCA Dataset Preprocessing
 
 ### Goal
 Build a preprocessing and data loading pipeline tailored to Project 2 (Radiomics).
@@ -138,7 +144,7 @@ train_loader, val_loader, test_loader = make_dataloaders(
 
 ---
 
-## Project 2 — Radiomics Feature Extraction & Analysis
+## Specific Task: Project 2 (Radiomics & Phenotyping) - Feature Extraction
 
 ### Goal
 Demonstrate radiomics feature extraction from COCA scans and correlate features
@@ -249,7 +255,7 @@ openpyxl
 
 ---
 
-## Project 2 — Unsupervised Analysis & Key Findings
+### Unsupervised Analysis & Key Findings
 
 ### Motivation
 
