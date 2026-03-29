@@ -1,0 +1,16 @@
+# Requirements for Project 2 dashboard and radiomics analysis
+# Install with: pip install -r requirements.txt
+# Note: requires Python 3.9 for pyradiomics compatibility
+
+numpy<2
+pandas>=2.0.0
+scipy>=1.11.0
+SimpleITK>=2.3.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly
+umap-learn
+streamlit
+pyradiomics>=3.0.1
+tqdm>=4.65.0
