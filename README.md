@@ -242,15 +242,25 @@ Severe patients have 6× more lesions than mild — information invisible to the
 streamlit run project2_radiomics/dashboard.py
 ```
 
-Opens at `http://localhost:8501`. Features:
-- CT slice viewer with auto-jump to most calcium-dense slice
-- 3-mode overlay: raw CT / calcium highlighted / density color map
-- Zoom inset with Ca²⁺ labels pointing to calcium deposits
-- Phenotype classification card (GMM, confidence score)
-- Density profile bar chart per patient
-- Lesion count, size and variability metrics
-- Auto-generated clinical narrative citing literature
-- Cohort context histograms showing where patient sits vs all 447 patients
+Opens at `http://localhost:8501`.
+
+![Calcium Phenotype Dashboard](project2_radiomics/dashboard_demo.png)
+
+**The dashboard provides a complete per-patient calcium phenotype report:**
+
+- **CT Viewer** — Axial CT slice with auto-jump to the most calcium-dense slice. Three overlay modes: raw CT (no overlay), calcium highlighted in red, and density color map where each calcium voxel is colored by its HU value (red = low-density/risky, green = high-density/protective). A zoom inset in the top-right corner magnifies the calcium region, with Ca²⁺ arrows pointing to each individual deposit.
+
+- **Phenotype Classification** — GMM-based phenotype assignment (Vulnerable Spotty / Dense Stable / Mixed Pattern) with confidence score. Color-coded card for immediate visual interpretation.
+
+- **Density Profile** — Horizontal bar chart showing the percentage of calcium voxels in each HU bin. Directly visualizes the density paradox: a patient with Agatston 50 but 90% red bars is more dangerous than a Severe patient with 40% green bars.
+
+- **Lesion Analysis** — Lesion count, average size, max size, and size coefficient of variation. High lesion count = diffuse multi-vessel disease; high CV = one dominant large lesion plus many small ones.
+
+- **Clinical Narrative** — Auto-generated plain-English summary citing primary literature (Criqui et al. JAMA 2014, Hoori et al. Scientific Reports 2024). Includes explicit disclaimer that findings are AI-generated and require clinical review.
+
+- **Cohort Context** — Histograms showing where the selected patient sits relative to all 447 patients in the dataset for Density Risk Index and Lesion Count.
+
+> **Note:** The dashboard requires the processed NIfTI files and pre-computed CSVs from the pipeline. It runs locally on your machine. A full demo screenshot is shown above.
 
 ---
 
