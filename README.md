@@ -1,8 +1,9 @@
 # PrediCT GSoC — COCA Dataset Pipeline & Radiomics Analysis
 
 This repository contains my evaluation tasks for the **PrediCT Google Summer of Code project**
-at Stanford AIMI. It includes a full preprocessing pipeline for the COCA cardiac CT dataset
-and a radiomics feature extraction + statistical analysis pipeline for Project 2.
+at Stanford AIMI. It includes a full preprocessing pipeline for the COCA cardiac CT dataset,
+a radiomics feature extraction and statistical analysis pipeline, and an interactive clinical
+dashboard for calcium phenotype visualization.
 
 ---
 
@@ -10,24 +11,30 @@ and a radiomics feature extraction + statistical analysis pipeline for Project 2
 
 ```
 prediCT-gsoc/
-├── common_task/              # Common Task: COCA Dataset Preprocessing
-│   ├── COCA_pipeline.py      # Main runner — orchestrates all steps
-│   ├── COCA_processor.py     # DICOM → NIfTI image + segmentation mask
-│   ├── COCA_resampler.py     # Resamples to target voxel spacing
-│   ├── unnester.py           # Flattens nested DICOM folder structure
-│   ├── splits.py             # Stratified train/val/test split
-│   ├── dataloader.py         # PyTorch data loader with augmentation
-│   ├── dataset_statistics.py # Generates dataset statistics report
-│   └── justification.md      # Written justification + dataset statistics
+├── common_task/                   # Common Task: COCA Dataset Preprocessing
+│   ├── COCA_pipeline.py           # Main runner — orchestrates all steps
+│   ├── COCA_processor.py          # DICOM → NIfTI image + segmentation mask
+│   ├── COCA_resampler.py          # Resamples to target voxel spacing
+│   ├── unnester.py                # Flattens nested DICOM folder structure
+│   ├── splits.py                  # Stratified train/val/test split
+│   ├── dataloader.py              # PyTorch data loader with augmentation
+│   ├── dataset_statistics.py      # Generates dataset statistics report
+│   └── justification.md           # Written justification + dataset statistics
 │
-├── project2_radiomics/       # Specific Task: Project 2 (Radiomics & Phenotyping) - Feature Extraction
-│   ├── extract_features.py       # PyRadiomics feature extraction + Agatston scores
-│   ├── statistical_analysis.py   # Spearman, Kruskal-Wallis, visualizations
-│   ├── unsupervised_analysis.py  # K-Means clustering, UMAP, phenotype characterization
+├── project2_radiomics/            # Specific Task: Project 2 (Radiomics & Phenotyping)
+│   ├── extract_features.py        # PyRadiomics feature extraction + Agatston scores
+│   ├── statistical_analysis.py    # Spearman, Kruskal-Wallis, visualizations
+│   ├── unsupervised_analysis.py   # K-Means clustering, UMAP, phenotype characterization
+│   ├── density_fingerprint.py     # Calcium density fingerprinting (HU distribution)
+│   ├── per_lesion_features.py     # Per-lesion feature extraction + aggregation
+│   ├── dashboard.py               # Interactive Streamlit clinical dashboard
 │   └── results/
-│       ├── features.csv           # Extracted features for 23 patients
-│       ├── spearman_results.csv   # Spearman correlation results
-│       ├── kruskal_results.csv    # Kruskal-Wallis test results
+│       ├── features.csv                      # Radiomic features (23 patients)
+│       ├── density_features.csv              # Density fingerprints (447 patients)
+│       ├── per_lesion_features.csv           # Per-lesion features (48 patients)
+│       ├── spearman_results.csv              # Spearman correlation results
+│       ├── kruskal_results.csv               # Kruskal-Wallis test results
+│       ├── cluster_assignments.csv           # GMM cluster assignments
 │       ├── correlation_matrix.png
 │       ├── significant_features.png
 │       ├── agatston_distribution.png
@@ -36,7 +43,9 @@ prediCT-gsoc/
 │       ├── cluster_selection.png
 │       ├── phenotype_profiles.png
 │       ├── cluster_agatston_distribution.png
-│       └── cluster_assignments.csv
+│       ├── density_fingerprints.png
+│       ├── density_contrast.png
+│       └── per_lesion_analysis.png
 │
 └── README.md
 ```
@@ -62,11 +71,8 @@ Build a preprocessing and data loading pipeline tailored to Project 2 (Radiomics
 ### Setup
 
 ```bash
-# Create conda environment (Python 3.9 recommended)
 conda create -n gsoc python=3.9
 conda activate gsoc
-
-# Install dependencies
 pip install numpy pandas SimpleITK opencv-python tqdm scikit-learn torch openpyxl
 ```
 
@@ -77,21 +83,16 @@ cd common_task
 python COCA_pipeline.py
 ```
 
-The pipeline runs interactively and walks through 3 steps:
+The pipeline runs interactively through 3 steps:
 
-**Step 1 — Unnesting**
-Flattens the variable-named scanner subfolders (e.g. `Pro_Gated_CS_3.0_I30f_3_70%`)
-so DICOM slices sit directly inside each patient folder.
+**Step 1 — Unnesting:** Flattens variable-named scanner subfolders so DICOM slices sit directly inside each patient folder.
 
-**Step 2 — Processing (DICOM → NIfTI)**
-Loads each patient's DICOM series as a 3D volume using SimpleITK, parses the XML
-calcium segmentation mask, and saves both as compressed `.nii.gz` files.
+**Step 2 — Processing (DICOM → NIfTI):** Loads each patient's DICOM series as a 3D volume, parses the XML calcium segmentation mask, and saves both as `.nii.gz` files.
 
-**Step 3 — Resampling**
-Resamples all volumes to a uniform spacing of **0.7 × 0.7 × 3.0 mm** using B-spline
-interpolation for images and nearest-neighbour for masks.
+**Step 3 — Resampling:** Resamples all volumes to uniform spacing of **0.7 × 0.7 × 3.0 mm**.
 
 ### Results
+
 ```
 787 patients processed
 40,113 DICOM files → 787 image.nii.gz + 787 seg.nii.gz
@@ -129,79 +130,41 @@ train_loader, val_loader, test_loader = make_dataloaders(
     train_df, val_df, test_df,
     resampled_root="processed/data_resampled"
 )
-
-# Each batch returns:
-# image : torch.Size([2, 1, 80, 512, 512])  — (B, C, Z, Y, X)
-# mask  : torch.Size([2, 1, 80, 512, 512])  — calcium segmentation
-# label : tensor([2, 1])                    — Agatston category
+# Each batch: image [2,1,80,512,512], mask [2,1,80,512,512], label [2]
 ```
 
 **Design choices for radiomics compatibility:**
-- HU windowing: [−200, 1000] — captures calcium range (≥130 HU) while excluding noise
-- Augmentation: left-right flip + mild intensity shift (±2%) only — elastic deformation
-  excluded as it corrupts texture features (GLCM, GLSZM, GLRLM)
-- WeightedRandomSampler corrects 43% none-class imbalance during training
+- HU windowing [−200, 1000] — captures calcium range while excluding noise
+- Augmentation: flip + intensity shift ±2% only — elastic deformation excluded to preserve texture features
+- WeightedRandomSampler corrects 43% none-class imbalance
 
 ---
 
 ## Specific Task: Project 2 (Radiomics & Phenotyping) - Feature Extraction
 
-### Goal
-Demonstrate radiomics feature extraction from COCA scans and correlate features
-with Agatston scores.
-
 ### Setup
 
 ```bash
 conda activate gsoc
-pip install pyradiomics scipy scikit-learn matplotlib seaborn
-pip install "numpy<2"   # required for PyRadiomics compatibility
+pip install pyradiomics scipy scikit-learn matplotlib seaborn umap-learn streamlit plotly
+pip install "numpy<2"
 ```
 
-### Usage
+### Step 1 — PyRadiomics Feature Extraction
 
 ```bash
-cd project2_radiomics
-
-# Step 1: Extract features
-python extract_features.py
-
-# Step 2: Statistical analysis + plots
-python statistical_analysis.py
+python project2_radiomics/extract_features.py
 ```
 
-### Features Extracted
+Extracts 18 radiomic features from 23 patients (Shape, GLCM, GLSZM, GLRLM) + Agatston scores.
 
-From 23 patients (balanced across Agatston categories):
+### Step 2 — Statistical Analysis
 
-| Feature Class | Features |
-|---------------|----------|
-| **Shape** | Sphericity, SurfaceVolumeRatio, Maximum3DDiameter, MeshVolume, VoxelVolume |
-| **GLCM** | Contrast, Correlation, InverseDifferenceMoment (Idm), JointEnergy, DifferenceVariance |
-| **GLSZM** | SmallAreaEmphasis, LargeAreaEmphasis, ZonePercentage, GrayLevelNonUniformity |
-| **GLRLM** | ShortRunEmphasis, LongRunEmphasis, RunPercentage, RunLengthNonUniformity |
-| **Optional** | Max HU, Mean HU, Total Volume (mm³) |
-
-### Agatston Score Calculation
-
-Calculated from original spacing images using the standard clinical formula:
-```
-score += pixel_area_mm² × n_calcium_pixels × density_factor  (per slice)
-
-density_factor:
-  130–199 HU → 1
-  200–299 HU → 2
-  300–399 HU → 3
-  ≥400    HU → 4
+```bash
+python project2_radiomics/statistical_analysis.py
 ```
 
-Categories: 0 | 1–99 | 100–399 | ≥400
-
-### Statistical Results
-
-**11 out of 18 features statistically significant (p < 0.05)**
-
-Top features by Spearman correlation with Agatston score:
+**Results: 11/18 features statistically significant (p < 0.05)**
 
 | Feature | Spearman ρ | p-value |
 |---------|-----------|---------|
@@ -211,28 +174,105 @@ Top features by Spearman correlation with Agatston score:
 | shape_VoxelVolume | +0.933 | <0.0001 |
 | glcm_JointEnergy | −0.911 | <0.0001 |
 | shape_Sphericity | −0.884 | <0.0001 |
-| shape_SurfaceVolumeRatio | −0.838 | <0.0001 |
-| glcm_Contrast | +0.762 | <0.0001 |
-| shape_Maximum3DDiameter | +0.733 | <0.0001 |
-| glcm_DifferenceVariance | +0.726 | <0.0001 |
 
-**Key findings:**
-- Volume features (MeshVolume, VoxelVolume) are the strongest positive predictors —
-  larger calcium deposits correlate with higher Agatston scores
-- Sphericity is strongly negatively correlated — severe calcium is more irregular,
-  not compact round nodules
-- Texture features (GrayLevelNonUniformity, RunLengthNonUniformity) reflect increasing
-  textural complexity as calcium burden grows
-- t-SNE shows mild separation between Mild and Severe categories in feature space
+### Step 3 — Unsupervised Clustering & Phenotyping
 
-### Visualizations
+```bash
+python project2_radiomics/unsupervised_analysis.py
+```
 
-| Plot | Description |
-|------|-------------|
-| `correlation_matrix.png` | Spearman correlation heatmap of all features |
-| `significant_features.png` | Box plots of top 6 significant features by Agatston category |
-| `agatston_distribution.png` | Distribution of Agatston categories in extracted sample |
-| `tsne.png` | t-SNE of radiomic feature space coloured by Agatston category |
+K-Means (k=4) + UMAP discovered 4 calcium phenotypes. Key finding: patients with the
+same Agatston category have fundamentally different morphological profiles.
+
+| Cluster | Patients | Avg Agatston | Phenotype |
+|---------|----------|-------------|-----------|
+| 1 | 7 | 67.8 | Small & Compact — focal round nodules |
+| 2 | 5 | 3005.3 | Large & Heterogeneous — dense complex plaques |
+| 3 | 1 | 0.0 | Homogeneous — no significant calcium |
+| 4 | 10 | 681.1 | Mixed — moderate volume, irregular texture |
+
+### Step 4 — Calcium Density Fingerprinting *(Novel)*
+
+```bash
+python project2_radiomics/density_fingerprint.py
+```
+
+Runs on all **447 patients** with calcium. Classifies each patient's calcium into 4 HU
+density bins based on Criqui et al. (JAMA 2014):
+
+| HU Range | Type | Clinical Meaning |
+|----------|------|-----------------|
+| 130–200 | Low-density | Spotty, vulnerable — associated with plaque rupture |
+| 200–300 | Mild-density | Intermediate |
+| 300–400 | Moderate-density | More stable |
+| 400+ | High-density | Dense, paradoxically **protective** |
+
+**Key finding:** Mild Agatston patients have the highest proportion of low-density
+(risky) calcium — 58.2% vs 35.7% for Severe. The Agatston score alone misses this.
+
+```
+Mild:     58.2% low-density,  5.5% high-density
+Moderate: 42.4% low-density, 13.6% high-density
+Severe:   35.7% low-density, 19.8% high-density  ← paradoxically more stable
+```
+
+### Step 5 — Per-Lesion Feature Extraction *(Novel)*
+
+```bash
+python project2_radiomics/per_lesion_features.py --n_patients 50
+```
+
+Instead of one feature vector per patient, extracts features for each individual calcium
+lesion separately (via connected component analysis), then aggregates with 6 statistics
+(mean, max, min, std, skewness, kurtosis) → **432 features per patient**.
+
+**Key finding:**
+
+| Category | Avg Lesion Count | Avg Size | Size Variability |
+|----------|-----------------|----------|-----------------|
+| Mild | 3.1 | 90 voxels | 0.50 (uniform) |
+| Moderate | 9.1 | 133 voxels | 1.27 |
+| Severe | 19.6 | 237 voxels | 1.73 (highly variable) |
+
+Severe patients have 6× more lesions than mild — information invisible to the Agatston score.
+
+### Step 6 — Interactive Clinical Dashboard
+
+```bash
+streamlit run project2_radiomics/dashboard.py
+```
+
+Opens at `http://localhost:8501`. Features:
+- CT slice viewer with auto-jump to most calcium-dense slice
+- 3-mode overlay: raw CT / calcium highlighted / density color map
+- Zoom inset with Ca²⁺ labels pointing to calcium deposits
+- Phenotype classification card (GMM, confidence score)
+- Density profile bar chart per patient
+- Lesion count, size and variability metrics
+- Auto-generated clinical narrative citing literature
+- Cohort context histograms showing where patient sits vs all 447 patients
+
+---
+
+## Key Findings & Hypothesis
+
+The central finding of this work is that **the Agatston score alone is insufficient
+to characterize calcium risk**. Three lines of evidence support this:
+
+1. **Density paradox:** Mild patients have 58% low-density (vulnerable) calcium vs
+   36% for Severe — a patient with a low score can have a more dangerous calcium profile
+   than a patient with a high score (Criqui et al., JAMA 2014)
+
+2. **Morphological diversity:** Unsupervised clustering reveals distinct phenotypes
+   within the same Agatston category. Cluster 2 (avg score 3005) and Cluster 4
+   (avg score 681) are both "Severe" but have completely different morphologies
+
+3. **Lesion patterns:** Per-lesion analysis shows Severe patients have 6× more discrete
+   lesions — diffuse multi-vessel disease vs focal single-vessel disease, both scoring
+   identically under the Agatston system
+
+This supports **radiomic phenotyping as a complement to Agatston scoring** in cardiac
+risk stratification — the core goal of PrediCT Project 2.
 
 ---
 
@@ -251,70 +291,10 @@ matplotlib
 seaborn
 pyradiomics
 openpyxl
+umap-learn
+streamlit
+plotly
 ```
-
----
-
-### Unsupervised Analysis & Key Findings
-
-### Motivation
-
-The Agatston score reduces complex 3D calcium morphology to a single number.
-Two patients with the same score can have fundamentally different calcium patterns —
-one with a single compact nodule, another with diffuse irregular deposits spread across
-multiple vessels. These differences may carry different clinical risk but are invisible
-to the score alone. Unsupervised clustering on radiomic features reveals these hidden phenotypes.
-
-### Method
-
-K-Means clustering (k=4, selected via silhouette score) was applied to the standardized
-radiomic feature vectors of 23 patients. UMAP was used for 2D visualization.
-Phenotypes were characterized by inspecting mean feature values per cluster.
-
-### Discovered Phenotypes
-
-| Cluster | Patients | Avg Agatston | Sphericity | Volume | Texture Complexity | Phenotype |
-|---------|----------|-------------|------------|--------|-------------------|-----------|
-| 1 | 7 | 67.8 | 0.599 | 59.2 | Low | Small & Compact — focal round nodules |
-| 2 | 5 | 3005.3 | 0.278 | 2574.2 | Very High | Large & Heterogeneous — dense complex plaques |
-| 3 | 1 | 0.0 | 0.370 | 399.5 | Low | Homogeneous — no significant calcium |
-| 4 | 10 | 681.1 | 0.354 | 621.5 | Medium | Mixed — moderate volume, irregular texture |
-
-### Key Insight — Cluster 4 vs Cluster 2
-
-Both Cluster 2 and Cluster 4 contain high Agatston score patients ("Severe"),
-yet their radiomic profiles are strikingly different:
-
-```
-Cluster 2 (avg score 3005): Sphericity=0.278, Volume=2574, Texture=59.15
-Cluster 4 (avg score 681):  Sphericity=0.354, Volume=621,  Texture=21.32
-```
-
-Cluster 2 patients have calcium that is far more irregular, larger and texturally complex.
-Under current clinical practice both groups would receive the same risk classification
-and treatment recommendation based on Agatston score alone.
-
-### Hypothesis
-
-Irregular, heterogeneous calcium deposits (Cluster 2) may represent a more vulnerable
-plaque phenotype — more prone to rupture — compared to compact, homogeneous deposits
-(Cluster 4) with similar scores. Radiomic features capture this morphological distinction
-that the Agatston score cannot.
-
-This supports the case for **radiomic phenotyping as a complement to Agatston scoring**
-in cardiac risk stratification — which is precisely the goal of the PrediCT Project 2.
-
-### Unsupervised Analysis Outputs
-
-| File | Description |
-|------|-------------|
-| `cluster_selection.png` | Elbow + silhouette plots justifying k=4 |
-| `umap.png` | UMAP coloured by cluster vs Agatston category side by side |
-| `phenotype_profiles.png` | Z-score heatmap of feature profiles per cluster |
-| `cluster_agatston_distribution.png` | Agatston category distribution within each cluster |
-| `cluster_assignments.csv` | Patient-level cluster assignments |
-
----
 
 ---
 
