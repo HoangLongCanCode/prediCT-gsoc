@@ -184,33 +184,68 @@ Full-cohort UMAP coloured by phenotype; phenotype comparison view (same Agatston
 
 ## 6. Timeline and Deliverables
 
-| Week | Task | Deliverable |
-|------|------|-------------|
-| 1–2 | Full-cohort patient-level feature extraction (447 patients, 50–100 features) | `features_full.csv` |
-| 3 | Per-lesion extraction at scale + PCA eigen features | `per_lesion_full.csv`, `eigen_features.csv` |
-| 4–5 | Multi-algorithm clustering (K-Means, Hierarchical, DBSCAN, GMM) | Cluster assignments per algorithm |
-| 6 | Ensemble phenotype consensus + characterization | `phenotype_assignments.csv`, phenotype profiles |
-| 7 | Perturbation testing + ICC feature stability | `feature_stability_report.csv`, robust feature set |
-| 8 | Clinical pattern alignment + NMI validation | Validation report, NMI scores |
-| 9 | Random Forest + SHAP feature importance | `shap_values.csv`, per-phenotype waterfall plots |
-| 10–11 | Enhanced dashboard: UMAP, SHAP panel, comparison view, narrative v2 | `dashboard.py` v2 |
-| 12 | Documentation, unit tests, final write-up | Complete codebase, README, reproducibility guide |
+**Weeks 1–2: Full-Cohort Patient-Level Feature Extraction**
+- **Goal:** Scale the existing PyRadiomics pipeline from 23 to all 447 calcium-positive patients. Extract 50–100 features per patient across Shape, GLCM, GLSZM, GLRLM, first-order intensity, and spatial classes (lesion count, diffusivity index, inter-lesion distances). Append density fingerprint features from the existing full-cohort analysis.
+- **Expected results:** A clean feature matrix of 447 × 50–100 features with no more than 5% missing values per feature. Feature distributions inspected for outliers before proceeding.
+- **Deliverable:** `features_full.csv`, feature distribution report.
 
-Weekly check-ins with mentors to review intermediate results, adjust methodology, and ensure alignment with PrediCT's broader research goals.
+**Week 3: Per-Lesion Extraction at Scale + PCA Eigen Features**
+- **Goal:** Extend the per-lesion pipeline to all 447 patients via SimpleITK connected component analysis. Aggregate with 6 statistics (~108 features per patient). Apply PCA to compute eigen features capturing dominant morphological axes.
+- **Expected results:** Per-lesion features extracted from >90% of patients. Top-5 PCA components explain >60% of variance. Eigen feature loadings confirmed as interpretable.
+- **Deliverable:** `per_lesion_full.csv`, `eigen_features.csv`, PCA scree plot.
+
+**Weeks 4–5: Multi-Algorithm Phenotype Discovery**
+- **Goal:** Apply K-Means, hierarchical clustering (Ward linkage), DBSCAN, and GMM to the standardised feature matrix. Select optimal hyperparameters via silhouette score, Davies-Bouldin index, and Calinski-Harabasz index independently for each algorithm.
+- **Expected results:** Each algorithm produces 3–6 stable clusters. If algorithms disagree substantially, the feature set will be revisited before ensemble consensus.
+- **Deliverable:** Cluster assignments per algorithm, silhouette score comparison plot, dendrogram.
+
+**Week 6: Ensemble Phenotype Consensus + Characterization**
+- **Goal:** Assign consensus phenotype labels based on agreement across algorithms. Flag ambiguous patients. Characterise each phenotype by mean feature values, Agatston distribution, density profile, and lesion statistics.
+- **Expected results:** 3–5 stable consensus phenotypes with >70% patient agreement. Each phenotype characterised with a Z-score profile heatmap and clinical narrative.
+- **Deliverable:** `phenotype_assignments.csv`, phenotype profile plots, clinical characterisation report.
+
+**Week 7: Perturbation Testing + Feature Stability**
+- **Goal:** Apply controlled image perturbations (rotation ±5°/10°/15°, translation ±2/5 mm, Gaussian noise σ = 10/25/50 HU) to 50 randomly selected patients. Compute ICC per feature and ARI for phenotype assignment stability.
+- **Expected results:** Robust feature subset with ICC > 0.75 (target: >60% of features pass). ARI > 0.80 confirms phenotype reproducibility. If ARI is lower, ensemble consensus method will be revisited.
+- **Deliverable:** `feature_stability_report.csv`, ICC heatmap, robust feature subset.
+
+**Week 8: Clinical Pattern Alignment + NMI Validation**
+- **Goal:** Map discovered phenotypes to literature-defined patterns (spotty, dense focal, diffuse) using Normalised Mutual Information. Confirm Agatston stratification via χ² tests and Cramér's V.
+- **Expected results:** NMI > 0.3 indicates meaningful alignment. Results reported regardless of whether thresholds are met.
+- **Deliverable:** Validation report with NMI scores, χ² results, and written interpretation.
+
+**Week 9: Random Forest + SHAP Feature Importance**
+- **Goal:** Train a Random Forest classifier on phenotype pseudo-labels. Compute SHAP values for per-patient and per-phenotype feature importance. Generate SHAP waterfall plots.
+- **Expected results:** Top 10 SHAP features consistent with Z-score profiles from Week 6. Any major discrepancy investigated and reported.
+- **Deliverable:** `shap_values.csv`, per-phenotype SHAP waterfall plots, feature importance ranking.
+
+**Weeks 10–11: Enhanced Clinical Dashboard**
+- **Goal:** Extend dashboard with full-cohort UMAP coloured by phenotype; phenotype comparison view; SHAP feature importance panel; reproducibility badge; extended narrative referencing SHAP-identified key features.
+- **Expected results:** Dashboard loads in <10 seconds per patient. UMAP clearly separates phenotypes. SHAP panel renders correctly for all patients including ambiguous cases.
+- **Deliverable:** `dashboard.py` v2, updated `dashboard_demo.png`, user guide.
+
+**Week 12: Documentation, Testing, Final Write-Up**
+- **Goal:** Write complete docstrings for all modules. Add unit tests for core functions. Write step-by-step README. Prepare final summary report of all findings including negative results and limitations.
+- **Expected results:** All tests pass. README allows a new user to reproduce results from scratch.
+- **Deliverable:** Complete codebase, unit tests, README, reproducibility guide, final summary report.
+
+All code committed incrementally to GitHub with clear commit messages. Weekly check-ins with mentors used as working sessions with specific questions and results, not just status updates.
 
 ---
 
 ## 7. Personal Statement
 
-What fascinates me most about the human body is not how it works when everything is fine — it is what happens at the boundary, the moment before something goes wrong. Cardiovascular disease does not announce itself. It builds silently, over years, in the walls of arteries, until one day a plaque ruptures and someone's life changes in an instant. That invisibility is what draws me to this problem.
+My primary interest is in machine learning and AI — building systems that learn from data and produce outputs that are useful, interpretable, and reliable. That is what drew me to this project. When I read through the papers linked in the project description, what caught my attention was a specific technical problem: the Agatston score is a lossy compression of a high-dimensional 3D volume into a single integer, and the literature shows that the information lost in that compression is clinically meaningful. That is exactly the kind of problem where machine learning should add real value — not by replacing clinical judgment but by recovering what the summarisation discards.
 
-I have always been drawn to medicine not just as a practice but as a puzzle. The heart, with its electrical signals, its pressure gradients, its microscopic tissue architecture, is one of the most elegant systems in biology. But what strikes me equally is how much of that complexity gets reduced to a single number in clinical practice. When I read that the Agatston score assigns the same risk classification to a patient with 58% low-density vulnerable calcium and a patient with predominantly dense, stable deposits, I did not just see a statistical gap. I saw patients who were being treated identically when their underlying biology was telling two completely different stories.
+What I find genuinely engaging about this work is the challenge of building something rigorous. It is easy to run a clustering algorithm and call the results "phenotypes." It is harder to ask whether those phenotypes are stable under realistic perturbations, whether they align with patterns described in the clinical literature, and whether the features driving them are interpretable. The validation framework in Section 3.3 reflects a real concern about what it means to discover something meaningful in data without outcome labels to validate against. That methodological problem interests me independently of the clinical application.
 
-That is the moment this project stopped being an academic exercise and became something I genuinely cared about. I built the density fingerprinting analysis and the per-lesion extraction not because they were required — they were not — but because the literature pointed to them as the right thing to do, and I needed to know whether the paradox Criqui et al. found in MESA actually showed up in real COCA data. It did. That confirmation, sitting in a CSV file generated from 447 real patients, felt like something worth building on.
+GSoC is also a direct opportunity to strengthen my technical skills in medical imaging, radiomics, and unsupervised learning — areas I want to develop further. Working with real CT data, a domain-specific library like PyRadiomics, and a validation problem without clean labels pushes me to think more carefully than a standard ML project would.
 
-Technology has always been the lens through which I want to contribute to medicine. Not to replace clinical judgment, but to give clinicians more to work with. The dashboard I built is a small version of what I believe this kind of tool should look like: a CT image, a density map, a plain-English narrative that cites the actual papers, and an explicit reminder that a cardiologist needs to interpret it all. I do not want to build a black box. I want to build something a doctor can trust because they can see exactly what it is doing and why.
+**How I will handle ambiguity and problems.** Research does not proceed as planned, and I do not expect this project to either. If a clustering algorithm produces unstable results, I will investigate whether the feature set, the sample size, or the algorithm choice is the issue — and report what I find honestly, including negative results. If a validation metric does not meet the threshold I proposed, I will not adjust the threshold to make the results look better. I will understand why, report it transparently, and discuss with mentors whether the methodology needs adjustment or the finding itself is informative. When I encounter problems outside my current knowledge — particularly in clinical interpretation — I will ask rather than guess. I will flag issues early rather than trying to resolve them quietly before a check-in.
 
-GSoC with PrediCT is the opportunity to take that from a proof-of-concept to something rigorous, validated, and genuinely useful to the research community. I plan to work with mentors proactively — sharing intermediate results, flagging uncertainties early, asking questions when clinical interpretation is outside my current knowledge, and being honest about what the data does and does not show. I am not looking to complete a project. I am looking to do research that matters.
+**Commitment as a mentee.** I will maintain a working log of design decisions and their reasoning so the project is reproducible and mentors can follow the methodology at any point. All code will be committed incrementally with clear messages. I will treat weekly check-ins as working sessions — coming prepared with specific questions and specific results, not just a summary of what I did.
+
+I am not looking for a project where I execute a predefined plan and submit code at the end. I want to do research that produces something the PrediCT team can build on, understand, and trust. That requires being honest about uncertainty, rigorous about methodology, and genuinely engaged with the problem — which I am.
 
 ---
 
