@@ -24,10 +24,11 @@ prediCT-gsoc/
 ├── project2_radiomics/            # Specific Task: Project 2 (Radiomics & Phenotyping)
 │   ├── extract_features.py        # PyRadiomics feature extraction + Agatston scores
 │   ├── statistical_analysis.py    # Spearman, Kruskal-Wallis, visualizations
-│   ├── unsupervised_analysis.py   # K-Means clustering, UMAP, phenotype characterization
+│   ├── unsupervised_analysis.py   # K-Means clustering, t-SNE, phenotype characterization
 │   ├── density_fingerprint.py     # Calcium density fingerprinting (HU distribution)
 │   ├── per_lesion_features.py     # Per-lesion feature extraction + aggregation
 │   ├── dashboard.py               # Interactive Streamlit clinical dashboard
+│   ├── regenerate_plots.py        # Regenerates proposal-quality figures
 │   └── results/
 │       ├── features.csv                      # Radiomic features (23 patients)
 │       ├── density_features.csv              # Density fingerprints (447 patients)
@@ -47,6 +48,7 @@ prediCT-gsoc/
 │       ├── density_contrast.png
 │       └── per_lesion_analysis.png
 │
+├── proposal.md                    # Research proposal (Markdown)
 └── README.md
 ```
 
@@ -181,7 +183,7 @@ python project2_radiomics/statistical_analysis.py
 python project2_radiomics/unsupervised_analysis.py
 ```
 
-K-Means (k=4) + UMAP discovered 4 calcium phenotypes. Key finding: patients with the
+K-Means (k=4) + t-SNE discovered 4 calcium phenotypes. Key finding: patients with the
 same Agatston category have fundamentally different morphological profiles.
 
 | Cluster | Patients | Avg Agatston | Phenotype |
@@ -213,7 +215,7 @@ density bins based on Criqui et al. (JAMA 2014):
 ```
 Mild:     58.2% low-density,  5.5% high-density
 Moderate: 42.4% low-density, 13.6% high-density
-Severe:   35.7% low-density, 19.8% high-density  ← paradoxically more stable
+Severe:   35.7% low-density, 19.8% high-density
 ```
 
 ### Step 5 — Per-Lesion Feature Extraction *(Novel)*
@@ -269,9 +271,10 @@ Opens at `http://localhost:8501`.
 The central finding of this work is that **the Agatston score alone is insufficient
 to characterize calcium risk**. Three lines of evidence support this:
 
-1. **Density paradox:** Mild patients have 58% low-density (vulnerable) calcium vs
-   36% for Severe — a patient with a low score can have a more dangerous calcium profile
-   than a patient with a high score (Criqui et al., JAMA 2014)
+1. **Density paradox:** Mild patients have 58% low-density calcium vs 36% for Severe.
+   Consistent with Criqui et al. (JAMA 2014), this suggests mild Agatston patients may
+   carry a more vulnerable plaque profile than their score implies — though outcome
+   validation is needed to confirm this in COCA directly.
 
 2. **Morphological diversity:** Unsupervised clustering reveals distinct phenotypes
    within the same Agatston category. Cluster 2 (avg score 3005) and Cluster 4
@@ -310,5 +313,5 @@ plotly
 
 ## Author
 
-**HoangLongCan**
+**Long Huynh**
 GSoC 2025 applicant — PrediCT (Stanford AIMI)
